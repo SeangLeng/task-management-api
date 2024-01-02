@@ -184,13 +184,15 @@ app.delete(`${baseUrl}/deleteTask/:id`, async (req, res) => {
     }
 });
 
-app.get(`${baseUrl}/detailTask/:id`, async (req, res) => {
+app.get(`${baseUrl}/detailTask/:userid/:id`, async (req, res) => {
     const taskId = req.params.id;
+    const userId = req.params.userid;
+
     try {
-        const result = await client.query('SELECT * FROM "TaskDetail" WHERE userid = $1', [taskId]);
+        const result = await client.query('SELECT * FROM "TaskDetail" WHERE taskid = $1 AND userid = $2', [taskId, userId]);
 
         if (result.rows.length === 0) {
-            // Handle the case when no task is found with the given taskId
+            // Handle the case when no task is found with the given taskId and userId
             res.status(404).json({ message: 'Task not found' });
             return;
         }
@@ -210,6 +212,67 @@ app.get(`${baseUrl}/detailTask/:id`, async (req, res) => {
         });
     }
 });
+
+app.post(`${baseUrl}/newTaskRequest`, async (req, res) => {
+    const { userid, taskid, title, isprocessing, request, complete } = req.body;
+    try {
+        const currentDate = new Date();
+        const newTask = await client.query('INSERT INTO "TaskDetail" (userid, title, taskid, isprocessing, request, complete, date) VALUES ($1, $2, $3, $4, $5, $6, $7)', [userid, title, taskid, isprocessing, request, complete, currentDate]);
+        res.status(200).json({
+            code: 200,
+            message: `sucessfully add ${title} request`,
+        })
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+})
+
+app.delete(`${baseUrl}/deleteTaskByEditorId/:id`, async (req, res) => {
+    const editorId = req.params.id;
+    try {
+        const deleteTaskResult = await client.query('DELETE FROM "TaskDetail" WHERE editor = $1 RETURNING *', [editorId]);
+
+        if (deleteTaskResult.rows.length === 0) {
+            // Handle the case when no tasks are found for the given editorId
+            res.status(404).json({ message: 'No tasks found for the given editorId' });
+            return;
+        }
+
+        const deletedTasks = deleteTaskResult.rows;
+
+        res.json({
+            code: 200,
+            message: 'Tasks deleted successfully',
+            deletedTasks,
+        });
+    } catch (err) {
+        console.error("Error deleting tasks:", err);
+        res.status(500).json({ message: 'Internal Server Error', error: err.message });
+    }
+});
+
+app.put(`${baseUrl}/SaveTaskDetail/:editorId`, async (req, res) => {
+    const editorId = req.params.editorId;
+    const { content } = req.body;
+    try {
+        const editContent = await client.query('UPDATE "TaskDetail" SET detailtask = $1 WHERE editor = $2', [content, editorId]);
+        res.status(200).json({ content: "content created successfully", code: 200 });
+    } catch (err) {
+        res.status(500).json({ message: 'Internal Server Error', err: err.message });
+    }
+})
+
+app.get(`${baseUrl}/findTaskDetail/:editorId`, async (req, res) => {
+    const editorId = req.params.editorId;
+    try {
+        const editContent = await client.query('SELECT detailtask FROM "TaskDetail" WHERE editor = $1', [editorId]);
+        res.status(200).json({ content: editContent.rows[0], code: 200 });
+    } catch (err) {
+        res.status(500).json({ message: 'Internal Server Error', err: err.message });
+    }
+})
+
+
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
