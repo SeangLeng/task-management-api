@@ -29,7 +29,7 @@ app.use(express.json());
 app.post(`${baseUrl}/register`, async (req, res) => {
     const { username, email, password } = req.body;
     const uuid = crypto.randomUUID();
-    const id = Math.random();
+    const id = Math.floor(Math.random() * 100) + 1;
     const roles = 2;
 
     try {
@@ -37,7 +37,7 @@ app.post(`${baseUrl}/register`, async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const register = await client.query(
-            'INSERT INTO "user" (username, email, password, roles, Userid) VALUES ($1, $2, $3, $4, $5)',
+            'INSERT INTO "user" (username, email, password, roles, userid) VALUES ($1, $2, $3, $4, $5)',
             [username, email, hashedPassword, roles, id]
         );
 
@@ -54,7 +54,7 @@ app.post(`${baseUrl}/register`, async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({
-            message: `${email} has been already registered`,
+            message: err.message,
             code: 500,
         });
     }
@@ -85,7 +85,7 @@ app.post(`${baseUrl}/login`, async (req, res) => {
                 refreshToken[refreshToken] = { id: user.id, email: user.email, name: user.username, roles: user.roles };
 
                 res.json({
-                    user: { id: user.Userid, email, name: user.username, roles: user.roles },
+                    user: { id: user.userid, email, name: user.username, roles: user.roles },
                     accessToken: accessToken,
                     refreshToken: refreshToken,
                 });
@@ -217,7 +217,7 @@ app.post(`${baseUrl}/newTaskRequest`, async (req, res) => {
     const { userid, taskid, title, isprocessing, request, complete } = req.body;
     try {
         const currentDate = new Date();
-        const newTask = await client.query('INSERT INTO "TaskDetail" (userid, title, taskid, isprocessing, request, complete, date) VALUES ($1, $2, $3, $4, $5, $6, $7)', [userid, title, taskid, isprocessing, request, complete, currentDate]);
+        const newTask = await client.query('INSERT INTO "TaskDetail" (userid, title, taskid, isprocessing, request, complete, date, detailtask) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)', [userid, title, taskid, isprocessing, request, complete, currentDate, "<p>Write your task details</p>"]);
         res.status(200).json({
             code: 200,
             message: `sucessfully add ${title} request`,
